@@ -35,6 +35,7 @@ const AllUsers = ({ loaderData }: Route.ComponentProps) => {
                   src={props.imageUrl}
                   alt="user"
                   className="rounded-full size-8 aspect-square"
+                  referrerPolicy="no-referrer"
                 />
                 <span>{props.name}</span>
               </div>
