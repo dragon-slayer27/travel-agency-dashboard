@@ -9,6 +9,8 @@ import {
   ChipsDirective,
 } from "@syncfusion/ej2-react-buttons";
 
+import { useParams } from "react-router";
+
 export const loader = async ({ params }: LoaderFunctionArgs) => {
   const { tripId } = params;
   if (!tripId) throw new Error("Trip ID is required");
@@ -28,7 +30,7 @@ export const loader = async ({ params }: LoaderFunctionArgs) => {
   };
 };
 
-const TripDetail = ({ loaderData }: Route.ComponentProps) => {
+const TripDetailComponent = ({ loaderData }: Route.ComponentProps) => {
   const imageUrls = loaderData?.trip?.imageUrls || [];
   const tripData = parseTripData(loaderData?.trip?.tripDetail);
 
@@ -219,4 +221,7 @@ const TripDetail = ({ loaderData }: Route.ComponentProps) => {
   );
 };
 
-export default TripDetail;
+export default function TripDetailWrapper(props: Route.ComponentProps) {
+  const { tripId } = useParams();
+  return <TripDetailComponent key={tripId} {...props} />;
+}
