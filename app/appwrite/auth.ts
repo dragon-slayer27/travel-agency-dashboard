@@ -91,7 +91,14 @@ export const getUser = async () => {
       appwriteConfig.userCollectionId,
       [
         Query.equal("accountId", user.$id),
-        Query.select(["name", "email", "imageUrl", "joinedAt", "accountId"]),
+        Query.select([
+          "name",
+          "email",
+          "imageUrl",
+          "joinedAt",
+          "accountId",
+          "status",
+        ]),
       ]
     );
 
@@ -116,4 +123,28 @@ export const getAllUsers = async (limit: number, offset: number) => {
     console.log("Error fetching users");
     return { users: [], total: 0 };
   }
+};
+
+export const swapUserRole = async () => {
+  const user = await account.get();
+  if (!user) throw new Error("User not found");
+
+  const { documents } = await database.listDocuments(
+    appwriteConfig.databaseId,
+    appwriteConfig.userCollectionId,
+    [Query.equal("accountId", user.$id)]
+  );
+  if (!documents.length) throw new Error("User document not found");
+
+  const userDoc = documents[0];
+  const newStatus = userDoc.status === "admin" ? "user" : "admin";
+
+  await database.updateDocument(
+    appwriteConfig.databaseId,
+    appwriteConfig.userCollectionId,
+    userDoc.$id,
+    { status: newStatus }
+  );
+
+  return newStatus;
 };
