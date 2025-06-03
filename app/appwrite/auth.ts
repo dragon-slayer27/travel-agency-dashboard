@@ -1,6 +1,6 @@
 import { redirect } from "react-router";
 import { account, appwriteConfig, database } from "./client";
-import { ID, OAuthProvider, Query } from "appWrite";
+import { ID, OAuthProvider, Query } from "appwrite";
 
 export const getExistingUser = async (id: string) => {
   try {
