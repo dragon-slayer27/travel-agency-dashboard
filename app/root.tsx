@@ -7,6 +7,10 @@ import {
   ScrollRestoration,
 } from "react-router";
 
+import { useEffect } from "react";
+import { account } from "./appwrite/client";
+import { getExistingUser, storeUserData } from "./appwrite/auth";
+
 import type { Route } from "./+types/root";
 import "./app.css";
 
@@ -46,6 +50,27 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  useEffect(() => {
+    const setupUser = async () => {
+      try {
+        const user = await account.get().catch(() => null);
+        if (!user) return;
+
+        const existing = await getExistingUser(user.$id);
+        if (!existing) {
+          console.log("Creating user document...");
+          await storeUserData();
+        } else {
+          console.log("User document already exists.");
+        }
+      } catch (error) {
+        console.error("User setup error:", error);
+      }
+    };
+
+    setupUser();
+  }, []);
+
   return <Outlet />;
 }
 
