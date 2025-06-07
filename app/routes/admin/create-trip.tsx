@@ -15,14 +15,17 @@ import { account } from "~/appwrite/client";
 import { useNavigate } from "react-router";
 
 export const loader = async () => {
-  const response = await fetch("https://restcountries.com/v3.1/all");
+  const response = await fetch(
+    "https://restcountries.com/v3.1/all?fields=name,flags,latlng,maps"
+  );
   const data = await response.json();
 
   return data.map((country: any) => ({
-    name: country.flag + country.name.common,
+    name: country.name.common,
     coordinates: country.latlng,
     value: country.name.common,
     openStreetMap: country.maps?.openStreetMap,
+    flagUrl: country.flags?.png?.length ? country.flags.png : null,
   }));
 };
 
@@ -101,6 +104,7 @@ const createTrip = ({ loaderData }: Route.ComponentProps) => {
   const countryData = countries.map((country) => ({
     text: country.name,
     value: country.value,
+    flagUrl: country.flagUrl ?? "",
   }));
 
   const mapData = [
@@ -129,6 +133,18 @@ const createTrip = ({ loaderData }: Route.ComponentProps) => {
               fields={{ text: "text", value: "value" }}
               placeholder="Select a Country"
               className="combo-box"
+              itemTemplate={(data: any) => (
+                <div className="flex items-center gap-2">
+                  {data.flagUrl && (
+                    <img
+                      src={data.flagUrl}
+                      className="w-6 h-4 object-cover rounded-sm ml-2"
+                      alt={`Flag of ${data.text}`}
+                    />
+                  )}
+                  <span>{data.text}</span>
+                </div>
+              )}
               change={(e: { value: string | undefined }) => {
                 if (e.value) {
                   handleChange("country", e.value);
@@ -146,6 +162,7 @@ const createTrip = ({ loaderData }: Route.ComponentProps) => {
                     .map((country) => ({
                       text: country.name,
                       value: country.value,
+                      flagUrl: country.flagUrl,
                     }))
                 );
               }}

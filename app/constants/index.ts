@@ -82,7 +82,7 @@ export const interests = [
   "Local Experiences",
 ];
 
-export const budgetOptions = ["Budget", "Mid-range", "Luxury", "Premium"];
+export const budgetOptions = ["Mid-range", "Luxury", "Premium"];
 
 export const groupTypes = ["Solo", "Couple", "Family", "Friends", "Business"];
 
