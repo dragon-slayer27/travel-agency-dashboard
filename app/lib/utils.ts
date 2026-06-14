@@ -11,19 +11,25 @@ export const formatDate = (dateString: string): string => {
 };
 
 export function parseMarkdownToJson(markdownText: string): unknown | null {
-  const regex = /```json\n([\s\S]+?)\n```/;
-  const match = markdownText.match(regex);
+  // The model may return JSON wrapped in a ```json code fence or as plain JSON.
+  const fenceMatch = markdownText.match(/```(?:json)?\s*([\s\S]+?)\s*```/);
+  const candidate = fenceMatch?.[1] ?? markdownText;
 
-  if (match && match[1]) {
-    try {
-      return JSON.parse(match[1]);
-    } catch (error) {
-      console.error("Error parsing JSON:", error);
-      return null;
-    }
+  // Fall back to the substring spanning the first "{" to the last "}" in case
+  // the model adds any surrounding prose.
+  const start = candidate.indexOf("{");
+  const end = candidate.lastIndexOf("}");
+  const jsonString =
+    start !== -1 && end !== -1 && end > start
+      ? candidate.slice(start, end + 1)
+      : candidate;
+
+  try {
+    return JSON.parse(jsonString.trim());
+  } catch (error) {
+    console.error("Error parsing JSON:", error);
+    return null;
   }
-  console.error("No valid JSON found in markdown text.");
-  return null;
 }
 
 export function parseTripData(jsonString: string): Trip | null {
@@ -43,7 +49,7 @@ export function getFirstWord(input: string = ""): string {
 
 export const calculateTrendPercentage = (
   countOfThisMonth: number,
-  countOfLastMonth: number
+  countOfLastMonth: number,
 ): TrendResult => {
   if (countOfLastMonth === 0) {
     return countOfThisMonth === 0

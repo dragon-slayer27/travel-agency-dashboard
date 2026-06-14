@@ -14,19 +14,103 @@ import { ButtonComponent } from "@syncfusion/ej2-react-buttons";
 import { account } from "~/appwrite/client";
 import { useNavigate } from "react-router";
 
-export const loader = async () => {
-  const response = await fetch(
-    "https://restcountries.com/v3.1/all?fields=name,flags,latlng,maps"
-  );
-  const data = await response.json();
+// Cache the country list in memory for 24 hours
+// The REST Countries terms allow caching for up to three days
+const COUNTRIES_CACHE_TTL = 24 * 60 * 60 * 1000;
+let countriesCache: { data: Country[]; expiresAt: number } | null = null;
 
-  return data.map((country: any) => ({
-    name: country.name.common,
-    coordinates: country.latlng,
-    value: country.name.common,
-    openStreetMap: country.maps?.openStreetMap,
-    flagUrl: country.flags?.png?.length ? country.flags.png : null,
-  }));
+const fetchCountries = async (): Promise<Country[]> => {
+  const apiKey =
+    import.meta.env.VITE_RESTCOUNTRIES_API_KEY ??
+    process.env.RESTCOUNTRIES_API_KEY;
+
+  if (!apiKey) {
+    console.error(
+      "Missing REST Countries API key (VITE_RESTCOUNTRIES_API_KEY)",
+    );
+    return [];
+  }
+
+  const fields = [
+    "names.common",
+    "coordinates.lat",
+    "coordinates.lng",
+    "links.open_street_maps",
+    "flag.url_png",
+  ].join(",");
+
+  const limit = 100;
+  let offset = 0;
+  const countries: Country[] = [];
+
+  try {
+    while (true) {
+      const response = await fetch(
+        `https://api.restcountries.com/countries/v5?response_fields=${fields}&limit=${limit}&offset=${offset}`,
+        {
+          headers: { Authorization: `Bearer ${apiKey}` },
+        },
+      );
+
+      if (!response.ok) {
+        console.error("Failed to fetch countries:", response.status);
+        break;
+      }
+
+      const json = await response.json();
+      const objects = json?.data?.objects;
+
+      if (!Array.isArray(objects)) {
+        console.error("Unexpected countries response:", json);
+        break;
+      }
+
+      for (const country of objects) {
+        const lat = country?.coordinates?.lat;
+        const lng = country?.coordinates?.lng;
+        const name = country?.names?.common;
+
+        if (!name) continue;
+
+        countries.push({
+          name,
+          coordinates:
+            typeof lat === "number" && typeof lng === "number"
+              ? [lat, lng]
+              : ([] as unknown as [number, number]),
+          value: name,
+          openStreetMap: country?.links?.open_street_maps,
+          flagUrl: country?.flag?.url_png || null,
+        });
+      }
+
+      if (!json?.data?.meta?.more) break;
+      offset += limit;
+    }
+  } catch (e) {
+    console.error("Error fetching countries:", e);
+    return [];
+  }
+
+  return countries;
+};
+
+export const loader = async () => {
+  if (countriesCache && countriesCache.expiresAt > Date.now()) {
+    return countriesCache.data;
+  }
+
+  const countries = await fetchCountries();
+
+  // Only cache a successful, non-empty result so transient failures can retry.
+  if (countries.length > 0) {
+    countriesCache = {
+      data: countries,
+      expiresAt: Date.now() + COUNTRIES_CACHE_TTL,
+    };
+  }
+
+  return countries;
 };
 
 const createTrip = ({ loaderData }: Route.ComponentProps) => {
@@ -157,13 +241,13 @@ const createTrip = ({ loaderData }: Route.ComponentProps) => {
                 e.updateData(
                   countries
                     .filter((country) =>
-                      country.name.toLowerCase().includes(query)
+                      country.name.toLowerCase().includes(query),
                     )
                     .map((country) => ({
                       text: country.name,
                       value: country.value,
                       flagUrl: country.flagUrl,
-                    }))
+                    })),
                 );
               }}
             />
@@ -206,7 +290,7 @@ const createTrip = ({ loaderData }: Route.ComponentProps) => {
                       .map((item) => ({
                         text: item,
                         value: item,
-                      }))
+                      })),
                   );
                 }}
                 className="combo-box"

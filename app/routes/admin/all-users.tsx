@@ -9,7 +9,7 @@ import { getAllUsers } from "~/appwrite/auth";
 import type { Route } from "./+types/all-users";
 
 export const loader = async () => {
-  const { users, total } = await getAllUsers(10, 0);
+  const { users, total } = await getAllUsers(100, 0);
 
   return { users, total };
 };
@@ -65,19 +65,19 @@ const AllUsers = ({ loaderData }: Route.ComponentProps) => {
               <article
                 className={cn(
                   "status-column",
-                  status === "user" ? "bg-success-50" : "bg-light-300"
+                  status === "user" ? "bg-success-50" : "bg-light-300",
                 )}
               >
                 <div
                   className={cn(
                     "size-1.5 rounded-full",
-                    status === "user" ? "bg-success-500" : "bg-gray-500"
+                    status === "user" ? "bg-success-500" : "bg-gray-500",
                   )}
                 />
                 <h3
                   className={cn(
                     "font-inter text-xs font-medium",
-                    status === "user" ? "text-success-700" : "text-gray-500"
+                    status === "user" ? "text-success-700" : "text-gray-500",
                   )}
                 >
                   {status}

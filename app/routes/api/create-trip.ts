@@ -33,7 +33,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     "budget": "${budget}",
     "travelStyle": "${travelStyle}",
     "country": "${country}",
-    "interests": ${interests},
+    "interests": "${interests}",
     "groupType": "${groupType}",
     "bestTimeToVisit": [
       '🌸 Season (from month to month): reason to visit',
@@ -75,7 +75,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const trip = parseMarkdownToJson(textResult.response.text());
 
     const imageResponse = await fetch(
-      `https://api.unsplash.com/search/photos?query=${country} ${interests} ${travelStyle}&client_id=${unsplashApiKey}`,
+      `https://api.unsplash.com/search/photos?query=${encodeURIComponent(
+        `${country} ${interests} ${travelStyle}`,
+      )}&client_id=${unsplashApiKey}`,
     );
 
     const imageUrls = (await imageResponse.json()).results

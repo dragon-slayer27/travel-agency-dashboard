@@ -7,7 +7,7 @@ export const getExistingUser = async (id: string) => {
     const { documents, total } = await database.listDocuments(
       appwriteConfig.databaseId,
       appwriteConfig.userCollectionId,
-      [Query.equal("accountId", id)]
+      [Query.equal("accountId", id)],
     );
     return total > 0 ? documents[0] : null;
   } catch (error) {
@@ -37,7 +37,7 @@ export const storeUserData = async () => {
         imageUrl: profilePicture,
         joinedAt: new Date().toISOString(),
         status: "user",
-      }
+      },
     );
 
     if (!createdUser.$id) redirect("/sign-in");
@@ -50,7 +50,7 @@ const getGooglePicture = async (accessToken: string) => {
   try {
     const response = await fetch(
       "https://people.googleapis.com/v1/people/me?personFields=photos",
-      { headers: { Authorization: `Bearer ${accessToken}` } }
+      { headers: { Authorization: `Bearer ${accessToken}` } },
     );
     if (!response.ok) throw new Error("Failed to fetch Google profile picture");
 
@@ -67,7 +67,7 @@ export const loginWithGoogle = async () => {
     account.createOAuth2Session(
       OAuthProvider.Google,
       `${window.location.origin}/`,
-      `${window.location.origin}/404`
+      `${window.location.origin}/404`,
     );
   } catch (error) {
     console.error("Error during OAuth2 session creation:", error);
@@ -100,7 +100,7 @@ export const getUser = async () => {
           "accountId",
           "status",
         ]),
-      ]
+      ],
     );
 
     return documents.length > 0 ? documents[0] : redirect("/sign-in");
@@ -115,7 +115,7 @@ export const getAllUsers = async (limit: number, offset: number) => {
     const { documents: users, total } = await database.listDocuments(
       appwriteConfig.databaseId,
       appwriteConfig.userCollectionId,
-      [Query.limit(limit), Query.offset(offset)]
+      [Query.limit(limit), Query.offset(offset), Query.orderDesc("joinedAt")],
     );
     if (total === 0) return { users: [], total };
 
@@ -133,7 +133,7 @@ export const swapUserRole = async () => {
   const { documents } = await database.listDocuments(
     appwriteConfig.databaseId,
     appwriteConfig.userCollectionId,
-    [Query.equal("accountId", user.$id)]
+    [Query.equal("accountId", user.$id)],
   );
   if (!documents.length) throw new Error("User document not found");
 
@@ -144,7 +144,7 @@ export const swapUserRole = async () => {
     appwriteConfig.databaseId,
     appwriteConfig.userCollectionId,
     userDoc.$id,
-    { status: newStatus }
+    { status: newStatus },
   );
 
   return newStatus;

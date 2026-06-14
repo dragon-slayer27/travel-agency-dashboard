@@ -1,7 +1,7 @@
 //@ts-nocheck
 
 import { Header, StatsCard, TripCard } from "components";
-import { getAllUsers, getUser } from "~/appwrite/auth";
+import { getUser } from "~/appwrite/auth";
 import { parseTripData } from "~/lib/utils";
 
 import type { Route } from "./+types/dashboard";
@@ -10,6 +10,7 @@ import {
   getTripsByTravelStyle,
   getUserGrowthPerDay,
   getUsersAndTripsStats,
+  getUsersWithRecentTrips,
 } from "~/appwrite/dashboard";
 
 import { getAllTrips } from "~/appwrite/trips";
@@ -42,14 +43,14 @@ export const clientLoader = async () => {
     trips,
     userGrowth,
     tripsByTravelStyle,
-    allUsers,
+    usersWithTrips,
   ] = await Promise.all([
     await getUser(),
     await getUsersAndTripsStats(),
     await getAllTrips(4, 0),
     await getUserGrowthPerDay(),
     await getTripsByTravelStyle(),
-    await getAllUsers(4, 0),
+    await getUsersWithRecentTrips(4),
   ]);
 
   const allTrips = trips.allTrips.map(({ $id, tripDetail, imageUrls }) => ({
@@ -58,10 +59,10 @@ export const clientLoader = async () => {
     imageUrls: imageUrls ?? [],
   }));
 
-  const mappedUsers: UsersItineraryCount[] = allUsers.users.map((user) => ({
+  const mappedUsers: UsersItineraryCount[] = usersWithTrips.map((user) => ({
     imageUrl: user.imageUrl,
     name: user.name,
-    count: user.itineraryCount ?? Math.floor(Math.random() * 10),
+    count: user.count,
   }));
 
   return {
@@ -87,10 +88,10 @@ const dashboard = ({ loaderData }: Route.ComponentProps) => {
 
   const usersAndTrips = [
     {
-      title: "Latest user signups",
+      title: "Recent trip creators",
       dataSource: allUsers,
       field: "count",
-      headerText: "Trips created",
+      headerText: "Total Trips created",
     },
     {
       title: "Trips based on interests",

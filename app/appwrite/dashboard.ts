@@ -1,5 +1,6 @@
 import { parseTripData } from "~/lib/utils";
 import { database, appwriteConfig } from "./client";
+import { Query } from "appwrite";
 
 interface Document {
   [key: string]: any;
@@ -9,7 +10,7 @@ type FilterByDate = (
   items: Document[],
   key: string,
   start: string,
-  end?: string
+  end?: string,
 ) => number;
 
 export const getUsersAndTripsStats = async (): Promise<DashboardStats> => {
@@ -18,18 +19,18 @@ export const getUsersAndTripsStats = async (): Promise<DashboardStats> => {
   const startPrev = new Date(
     d.getFullYear(),
     d.getMonth() - 1,
-    1
+    1,
   ).toISOString();
   const endPrev = new Date(d.getFullYear(), d.getMonth(), 0).toISOString();
 
   const [users, trips] = await Promise.all([
     database.listDocuments(
       appwriteConfig.databaseId,
-      appwriteConfig.userCollectionId
+      appwriteConfig.userCollectionId,
     ),
     database.listDocuments(
       appwriteConfig.databaseId,
-      appwriteConfig.tripCollectionId
+      appwriteConfig.tripCollectionId,
     ),
   ]);
 
@@ -48,7 +49,7 @@ export const getUsersAndTripsStats = async (): Promise<DashboardStats> => {
         users.documents,
         "joinedAt",
         startCurrent,
-        undefined
+        undefined,
       ),
       lastMonth: filterByDate(users.documents, "joinedAt", startPrev, endPrev),
     },
@@ -58,13 +59,13 @@ export const getUsersAndTripsStats = async (): Promise<DashboardStats> => {
         filterUsersByRole("user"),
         "joinedAt",
         startCurrent,
-        undefined
+        undefined,
       ),
       lastMonth: filterByDate(
         filterUsersByRole("user"),
         "joinedAt",
         startPrev,
-        endPrev
+        endPrev,
       ),
     },
     totalTrips: trips.total,
@@ -73,14 +74,9 @@ export const getUsersAndTripsStats = async (): Promise<DashboardStats> => {
         trips.documents,
         "createdAt",
         startCurrent,
-        undefined
+        undefined,
       ),
-      lastMonth: filterByDate(
-        filterUsersByRole("user"),
-        "joinedAt",
-        startPrev,
-        endPrev
-      ),
+      lastMonth: filterByDate(trips.documents, "createdAt", startPrev, endPrev),
     },
   };
 };
@@ -88,7 +84,7 @@ export const getUsersAndTripsStats = async (): Promise<DashboardStats> => {
 export const getUserGrowthPerDay = async () => {
   const users = await database.listDocuments(
     appwriteConfig.databaseId,
-    appwriteConfig.userCollectionId
+    appwriteConfig.userCollectionId,
   );
 
   const userGrowth = users.documents.reduce(
@@ -101,7 +97,7 @@ export const getUserGrowthPerDay = async () => {
       acc[day] = (acc[day] || 0) + 1;
       return acc;
     },
-    {}
+    {},
   );
 
   return Object.entries(userGrowth).map(([day, count]) => ({
@@ -113,7 +109,7 @@ export const getUserGrowthPerDay = async () => {
 export const getTripsCreatedPerDay = async () => {
   const trips = await database.listDocuments(
     appwriteConfig.databaseId,
-    appwriteConfig.tripCollectionId
+    appwriteConfig.tripCollectionId,
   );
 
   const tripsGrowth = trips.documents.reduce(
@@ -126,7 +122,7 @@ export const getTripsCreatedPerDay = async () => {
       acc[day] = (acc[day] || 0) + 1;
       return acc;
     },
-    {}
+    {},
   );
 
   return Object.entries(tripsGrowth).map(([day, count]) => ({
@@ -138,7 +134,7 @@ export const getTripsCreatedPerDay = async () => {
 export const getTripsByTravelStyle = async () => {
   const trips = await database.listDocuments(
     appwriteConfig.databaseId,
-    appwriteConfig.tripCollectionId
+    appwriteConfig.tripCollectionId,
   );
 
   const travelStyleCounts = trips.documents.reduce(
@@ -151,11 +147,71 @@ export const getTripsByTravelStyle = async () => {
       }
       return acc;
     },
-    {}
+    {},
   );
 
   return Object.entries(travelStyleCounts).map(([travelStyle, count]) => ({
     count: Number(count),
     travelStyle,
   }));
+};
+
+export const getUsersWithRecentTrips = async (limit: number = 4) => {
+  // Fetch trips ordered by most recent first so we can find who generated
+  // trips recently and count how many each user has created.
+  const trips = await database.listDocuments(
+    appwriteConfig.databaseId,
+    appwriteConfig.tripCollectionId,
+    [Query.orderDesc("createdAt"), Query.limit(1000)],
+  );
+
+  const statsByUser = new Map<
+    string,
+    { count: number; lastCreatedAt: string }
+  >();
+
+  for (const trip of trips.documents) {
+    const userId = (trip as Document).userId;
+    if (!userId) continue;
+
+    const existing = statsByUser.get(userId);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      // Documents are already sorted desc, so the first occurrence is the
+      // user's most recent trip.
+      statsByUser.set(userId, {
+        count: 1,
+        lastCreatedAt: (trip as Document).createdAt,
+      });
+    }
+  }
+
+  const userIds = Array.from(statsByUser.keys());
+  if (userIds.length === 0) return [];
+
+  // Look up the user profiles for everyone who has created a trip.
+  const users = await database.listDocuments(
+    appwriteConfig.databaseId,
+    appwriteConfig.userCollectionId,
+    [Query.equal("accountId", userIds), Query.limit(userIds.length)],
+  );
+
+  const userById = new Map(
+    users.documents.map((u: Document) => [u.accountId, u]),
+  );
+
+  return userIds
+    .map((userId) => {
+      const stats = statsByUser.get(userId)!;
+      const user = userById.get(userId);
+      return {
+        imageUrl: user?.imageUrl ?? "",
+        name: user?.name ?? "Unknown user",
+        count: stats.count,
+        lastCreatedAt: stats.lastCreatedAt,
+      };
+    })
+    .sort((a, b) => b.lastCreatedAt.localeCompare(a.lastCreatedAt))
+    .slice(0, limit);
 };

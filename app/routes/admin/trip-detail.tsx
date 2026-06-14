@@ -98,7 +98,7 @@ const TripDetailComponent = ({ loaderData }: Route.ComponentProps) => {
                 "w-full rounded-xl object-cover",
                 i === 0
                   ? "md:col-span-2 md:row-span-2 h-[330px]"
-                  : "md:row-span-1 h-[150px]"
+                  : "md:row-span-1 h-[150px]",
               )}
             />
           ))}
@@ -176,7 +176,7 @@ const TripDetailComponent = ({ loaderData }: Route.ComponentProps) => {
           ))}
         </ul>
         {visitTimeAndWeatherInfo.map((section) => (
-          <section key={section.title} className="='visit">
+          <section key={section.title} className="visit">
             <div>
               <h3>{section.title}</h3>
 
@@ -213,7 +213,7 @@ const TripDetailComponent = ({ loaderData }: Route.ComponentProps) => {
                 tags={[interests, travelStyle]}
                 price={estimatedPrice}
               />
-            )
+            ),
           )}
         </div>
       </section>
